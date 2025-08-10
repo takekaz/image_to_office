@@ -177,30 +177,40 @@ def embed_images_to_ppt(ppt_file_path, image_folder_path, regions_and_coords, ex
     except Exception as e:
         print(f"Error: Could not save PowerPoint file to {ppt_file_path}. Error: {e}")
 
+import json
+
 if __name__ == '__main__':
-    # サンプルの使用方法
+    # 設定ファイルを読み込む
+    config_path = "/workspace/image_to_office/config.json"
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: Config file not found at {config_path}")
+        exit(1)
+    except json.JSONDecodeError:
+        print(f"Error: Could not decode JSON from {config_path}")
+        exit(1)
+
     output_ppt_path = "/workspace/image_to_office/output_images.pptx"
     input_image_folder = "/workspace/image_to_office/img"
     
-    # 領域とセル座標のペアの例 (ExcelのB2, C5, E8, G11セルを想定)
-    sample_regions_coords = [
-        {"img_region": [50, 100, 200, 150], "excel_pos": "B2"},  # 黄色文字の領域を想定
-        {"img_region": [100, 200, 250, 250], "excel_pos": "C5"}, # 白文字の領域を想定
-        {"img_region": [150, 300, 300, 350], "excel_pos": "E8"}, # 緑文字の領域を想定
-        {"img_region": [500, 400, 650, 450], "excel_pos": "G11"} # 赤文字の領域を想定
-    ]
+    # 設定から領域とセル座標のペアを取得
+    regions_and_coords_from_config = config.get("image_regions_and_coords", [])
+    if not regions_and_coords_from_config:
+        print("Error: 'image_regions_and_coords' not found in config.json or is empty.")
+        exit(1)
 
-    # Excelからインチへの変換パラメータ
-    # これは非常に近似的な値であり、正確なExcelのレンダリングとは異なる場合があります。
-    # 実際のExcelの列幅や行高は、フォント、DPI、列の内容によって動的に変わるため、
-    # 特定のExcelファイルからの正確な変換にはopenpyxlでファイル自体を読み込む必要があります。
-    # ここでは一般的なデフォルト値に基づいた仮の変換値を使用します。
-    conversion_params = {
-        "col_width_pixels_per_char": 7.0, # Excelデフォルトフォントでの1文字あたりの平均ピクセル幅 (目安)
-        "default_col_width_chars": 8.43,  # Excelのデフォルト列幅（標準フォントの文字数単位）
-        "row_height_points_per_row": 15.0, # Excelのデフォルト行高（ポイント単位）
-        "dpi": 96 # 一般的な画面DPI
-    }
+    # 設定からExcelからPPTへの変換パラメータを取得
+    excel_to_ppt_conversion_params_from_config = config.get("excel_to_ppt_conversion_params", {})
+    if not excel_to_ppt_conversion_params_from_config:
+        print("Error: 'excel_to_ppt_conversion_params' not found in config.json or is empty.")
+        exit(1)
 
     # 関数を実行
-    embed_images_to_ppt(output_ppt_path, input_image_folder, sample_regions_coords, conversion_params)
+    embed_images_to_ppt(
+        output_ppt_path,
+        input_image_folder,
+        regions_and_coords_from_config,
+        excel_to_ppt_conversion_params_from_config
+    )
