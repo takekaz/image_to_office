@@ -27,10 +27,33 @@ class ImageToOfficeApp:
             print(f"Config loaded from {config_path}")
         except FileNotFoundError:
             messagebox.showerror("Error", f"設定ファイルが見つかりません: {config_path}")
-            self.config_data = {}
+            self.config_data = self.create_default_config(config_path)
         except json.JSONDecodeError:
             messagebox.showerror("Error", f"設定ファイルの読み込みに失敗しました: {config_path}")
-            self.config_data = {}
+            self.config_data = self.create_default_config(config_path)
+
+
+    def create_default_config(self, config_path):
+        """デフォルトの設定ファイルを作成し、保存します。"""
+        default_config = {
+            "image_regions_and_coords": [
+                {"img_region": [100, 100, 200, 150], "excel_pos": "B2"}
+            ],
+            "excel_to_ppt_conversion_params": {
+                "col_width_pixels_per_char": 7.0,
+                "default_col_width_chars": 8.43,
+                "row_height_points_per_row": 15.0,
+                "dpi": 96
+            }
+        }
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(default_config, f, indent=4, ensure_ascii=False)
+            messagebox.showinfo("情報", f"設定ファイルが見つからなかったため、デフォルト設定で作成しました: {config_path}")
+            return default_config
+        except Exception as e:
+            messagebox.showerror("エラー", f"デフォルト設定ファイルの作成に失敗しました: {e}")
+            return {}
 
     def set_initial_paths(self):
         script_dir = os.path.dirname(__file__)
