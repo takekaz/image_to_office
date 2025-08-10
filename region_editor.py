@@ -415,24 +415,17 @@ class RegionEditor:
 
             tooltip_text = "リサイズ中"
 
-        elif self.drag_mode == "new_region_potential" or self.drag_mode == "new_region":
-            # 新規領域作成中または作成開始
+        elif self.drag_mode == "new_region_potential":
             dx = current_canvas_x - self.drag_start_x
             dy = current_canvas_y - self.drag_start_y
 
-            if abs(dx) > 20 or abs(dy) > 20: # 20ピクセル以上ドラッグで新規領域と判定
+            if abs(dx) > 20 or abs(dy) > 20:
                 self.drag_mode = "new_region" # モードを確定
-
-                if self.new_region_rect_id is None:
-                    # 新規矩形を生成 (仮の矩形)
-                    self.new_region_rect_id = self.canvas.create_rectangle(
-                        self.drag_start_x, self.drag_start_y, current_canvas_x, current_canvas_y,
-                        outline="orange", width=2, tags="new_region_temp"
-                    )
-                else:
-                    # 仮の矩形を更新
-                    self.canvas.coords(self.new_region_rect_id, self.drag_start_x, self.drag_start_y, current_canvas_x, current_canvas_y)
-                
+                # ここで初めて仮の矩形を生成
+                self.new_region_rect_id = self.canvas.create_rectangle(
+                    self.drag_start_x, self.drag_start_y, current_canvas_x, current_canvas_y,
+                    outline="orange", width=2, tags="new_region_temp"
+                )
                 tooltip_text = "新規追加中"
                 # 新規領域の画像座標 (Canvas座標と一致)
                 x1_img = (self.drag_start_x - self.img_x)
@@ -440,10 +433,25 @@ class RegionEditor:
                 x2_img = (current_canvas_x - self.img_x)
                 y2_img = (current_canvas_y - self.img_y)
                 current_region_coords = [min(x1_img, x2_img), min(y1_img, y2_img), max(x1_img, x2_img), max(y1_img, y2_img)]
+                # 新規追加の初回ドラッグでツールチップを表示
+                self.show_tooltip(event.x, event.y, tooltip_text + self._format_coords_for_tooltip(current_region_coords))
             else:
-                # 20ピクセル未満の場合はツールチップを表示しない
-                self.hide_tooltip()
+                self.hide_tooltip() # 20ピクセル未満ではツールチップを非表示
                 return # 20ピクセル未満では何もしない
+        
+        elif self.drag_mode == "new_region":
+            # 仮の矩形を更新
+            self.canvas.coords(self.new_region_rect_id, self.drag_start_x, self.drag_start_y, current_canvas_x, current_canvas_y)
+            tooltip_text = "新規追加中"
+            # 新規領域の画像座標 (Canvas座標と一致)
+            x1_img = (self.drag_start_x - self.img_x)
+            y1_img = (self.drag_start_y - self.img_y)
+            x2_img = (current_canvas_x - self.img_x)
+            y2_img = (current_canvas_y - self.img_y)
+            current_region_coords = [min(x1_img, x2_img), min(y1_img, y2_img), max(x1_img, x2_img), max(y1_img, y2_img)]
+            # 新規追加の継続ドラッグでツールチップを更新
+            self.update_tooltip(event.x, event.y, tooltip_text + self._format_coords_for_tooltip(current_region_coords))
+            return # このパスでは下部のif文は実行しない
 
         if tooltip_text and current_region_coords:
             self.update_tooltip(event.x, event.y, tooltip_text + self._format_coords_for_tooltip(current_region_coords))
@@ -585,4 +593,5 @@ if __name__ == '__main__':
 
     app = RegionEditor(root, dummy_config_path, dummy_image_folder, dummy_callback)
     root.mainloop()
+
 

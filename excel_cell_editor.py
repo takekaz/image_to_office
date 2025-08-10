@@ -1,4 +1,5 @@
 
+
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
 import json
@@ -73,7 +74,8 @@ class ExcelCellEditor:
         self.canvas.config(xscrollcommand=self.hbar.set, yscrollcommand=self.vbar.set)
         
         # スクロールイベントを直接フックしてヘッダーを再描画
-        self.canvas.bind("<Configure>", lambda e: self.draw_grid_and_regions())
+        # configureイベントはウィンドウのリサイズ、MouseWheelはスクロール
+        self.canvas.bind("<Configure>", self.on_canvas_configure)
         self.canvas.bind("<Button-4>", self.on_scroll_event) # Linux/macOS Scroll up
         self.canvas.bind("<Button-5>", self.on_scroll_event) # Linux/macOS Scroll down
         self.canvas.bind("<MouseWheel>", self.on_scroll_event) # Windows MouseWheel
@@ -89,8 +91,14 @@ class ExcelCellEditor:
 
         self.draw_grid_and_regions() # 初期描画
 
+    def on_canvas_configure(self, event):
+        # ウィンドウサイズ変更時に再描画
+        self.draw_grid_and_regions()
+
     def on_scroll_event(self, event):
         # スクロール後のヘッダー再描画を遅延させる
+        # `after_idle` を使うことで、Tkinterがイベントキューのアイドル状態になったときに実行される
+        # これにより、連続的なスクロールイベントでの過度な再描画を防ぐ
         self.master.after_idle(self.draw_grid_and_regions)
 
 
@@ -125,48 +133,7 @@ class ExcelCellEditor:
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
 
-        # ヘッダーの描画
-        # 列ヘッダー
-        for i in range(50): # 50列
-            col_letter = self._col_to_letter(i + 1)
-            x_pos = self.header_offset + i * self.cell_width
-            # 列ヘッダーは垂直スクロールしても常に上部に表示されるようにする
-            self.canvas.create_text(
-                x_pos + self.cell_width / 2, y_view + self.header_offset / 2,
-                text=col_letter, fill="black", font=("Arial", 9, "bold"),
-                tags="header_label"
-            )
-            
-        # 行ヘッダー
-        for i in range(100): # 100行
-            y_pos = self.header_offset + i * self.cell_height
-            # 行ヘッダーは水平スクロールしても常に左側に表示されるようにする
-            self.canvas.create_text(
-                x_view + self.header_offset / 2, y_pos + self.cell_height / 2,
-                text=str(i + 1), fill="black", font=("Arial", 9, "bold"),
-                tags="header_label"
-            )
-            
-        # 固定ヘッダーの背景 (透明度設定はCanvasでは難しいので、色で対応)
-        self.canvas.create_rectangle(
-            x_view, y_view, x_view + self.header_offset, y_view + self.header_offset,
-            fill="lightgray", outline="", tags="header_bg"
-        )
-        self.canvas.create_rectangle(
-            x_view + self.header_offset, y_view, x_view + canvas_width, y_view + self.header_offset,
-            fill="lightgray", outline="", tags="header_bg"
-        )
-        self.canvas.create_rectangle(
-            x_view, y_view + self.header_offset, x_view + self.header_offset, y_view + canvas_height,
-            fill="lightgray", outline="", tags="header_bg"
-        )
-        
-        # ヘッダーラベルを最前面に
-        self.canvas.tag_raise("header_label")
-        self.canvas.tag_raise("header_bg", "header_label") # 背景がラベルの後ろになるように
-
-
-        # グリッド線の描画 (表示されている範囲のみ描画を最適化することも可能だが、ここでは全体を描画)
+        # --- グリッド線の描画 ---
         # 縦線
         for i in range(50): # 50列
             x = self.header_offset + i * self.cell_width
@@ -178,12 +145,48 @@ class ExcelCellEditor:
             self.canvas.create_line(self.header_offset, y, self.header_offset + 50 * self.cell_width, y, fill="lightgray", tags="grid")
 
         # キャンバスのスクロール領域を最大グリッド範囲に合わせて設定
-        # これにより、ユーザーは設定されたグリッドの範囲全体をスクロールできるようになる
         max_grid_width = self.header_offset + 50 * self.cell_width
         max_grid_height = self.header_offset + 100 * self.cell_height
         self.canvas.config(scrollregion=(0, 0, max_grid_width, max_grid_height))
 
-        # 領域の描画
+        # --- ヘッダーの背景描画 ---
+        # コーナーの四角
+        self.canvas.create_rectangle(
+            x_view, y_view, x_view + self.header_offset, y_view + self.header_offset,
+            fill="lightgray", outline="", tags="header_bg"
+        )
+        # 上部ヘッダーの背景
+        self.canvas.create_rectangle(
+            x_view + self.header_offset, y_view, x_view + canvas_width, y_view + self.header_offset,
+            fill="lightgray", outline="", tags="header_bg"
+        )
+        # 左側ヘッダーの背景
+        self.canvas.create_rectangle(
+            x_view, y_view + self.header_offset, x_view + self.header_offset, y_view + canvas_height,
+            fill="lightgray", outline="", tags="header_bg"
+        )
+
+        # --- ヘッダーラベルの描画 ---
+        # 列ヘッダー
+        for i in range(50): # 50列
+            col_letter = self._col_to_letter(i + 1)
+            x_pos = self.header_offset + i * self.cell_width
+            self.canvas.create_text(
+                x_pos + self.cell_width / 2, y_view + self.header_offset / 2, # x_view +... で固定位置に
+                text=col_letter, fill="black", font=("Arial", 9, "bold"),
+                tags="header_label"
+            )
+            
+        # 行ヘッダー
+        for i in range(100): # 100行
+            y_pos = self.header_offset + i * self.cell_height
+            self.canvas.create_text(
+                x_view + self.header_offset / 2, y_pos + self.cell_height / 2, # y_view +... で固定位置に
+                text=str(i + 1), fill="black", font=("Arial", 9, "bold"),
+                tags="header_label"
+            )
+            
+        # --- 領域の描画 ---
         for i, item in enumerate(self.regions_data):
             excel_pos = item["excel_pos"]
             x1, y1, x2, y2 = self._cell_to_coords(excel_pos)
@@ -204,6 +207,10 @@ class ExcelCellEditor:
         # 矩形とテキストをグリッド線の前面に表示
         self.canvas.tag_raise("cell_rect")
         self.canvas.tag_raise("cell_text")
+        
+        # ヘッダー背景とラベルを最前面に配置（常に表示されるように）
+        self.canvas.tag_raise("header_bg")
+        self.canvas.tag_raise("header_label")
 
 
     def _col_to_letter(self, col_idx):
@@ -269,7 +276,7 @@ class ExcelCellEditor:
                         self.canvas.itemconfig(self.selected_rect_id, outline="green") # 選択色
                         return # 最初の矩形が見つかったら終了
         
-        # ヘッダー領域内でのクリックはドラッグしない
+        # ヘッダー領域内でのクリックはドラッグしない (セルのドラッグとは区別)
         if event.x < self.header_offset or event.y < self.header_offset:
             self.drag_start_x = None # ドラッグを無効化
             self.drag_start_y = None
@@ -380,3 +387,4 @@ if __name__ == '__main__':
 
     app = ExcelCellEditor(root, dummy_config_path, dummy_callback)
     root.mainloop()
+

@@ -1,9 +1,7 @@
 
-
-
 import os
 import json
-import tempfile # 追加
+import tempfile
 from PIL import Image
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as ExcelImage
@@ -101,5 +99,3 @@ if __name__ == '__main__':
         print(f"Error: Could not decode JSON from {config_path}. Check file format.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-
-

@@ -4,10 +4,10 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import os
 import json
-import functools # partialを使うためにインポート
+import functools
+import re # 連番付加のために追加
 
 # 既存の処理関数をインポート
-# main.py と同じ階層にあると仮定
 from image_to_excel import insert_images_to_excel
 from image_to_pptx import insert_images_to_pptx
 
@@ -135,7 +135,7 @@ class ImageToOfficeApp:
         # Treeviewの既存データをクリア
         for i in self.tree.get_children():
             self.tree.delete(i)
-        
+
         # 新しいデータを挿入
         regions_and_coords = self.config.get("image_regions_and_excel_coords", [])
         for item in regions_and_coords:
@@ -160,9 +160,48 @@ class ImageToOfficeApp:
         from excel_cell_editor import ExcelCellEditor # ここでインポート
         ExcelCellEditor(editor_window, self.config_path, self.update_main_config_display)
 
+    def _handle_file_overwrite(self, original_filepath):
+        """
+        ファイルが存在する場合、上書きまたは連番付加をユーザーに確認する。
+        最終的な出力ファイルパスを返す。
+        """
+        if not os.path.exists(original_filepath):
+            return original_filepath # ファイルが存在しない場合はそのまま返す
+
+        # ファイルが存在する場合
+        result = messagebox.askyesnocancel(
+            "ファイルが存在します",
+            f"出力ファイル '{os.path.basename(original_filepath)}' は既に存在します。\n\n"
+            "上書きしますか？\n"
+            "「はい」：ファイルを上書きします。\n"
+            "「いいえ」：ファイル名に連番を付加して保存します。\n"
+            "「キャンセル」：処理を中止します。"
+        )
+
+        if result is True: # はい (上書き)
+            return original_filepath
+        elif result is False: # いいえ (連番付加)
+            base, ext = os.path.splitext(original_filepath)
+            # 既存の連番 (例: (1)) があればそれを考慮して次の連番を探す
+            match = re.search(r'\((\d+)\)$', base)
+            if match:
+                base = base[:match.start()] # 連番部分を除去
+                start_num = int(match.group(1)) + 1
+            else:
+                start_num = 1
+
+            i = start_num
+            new_filepath = f"{base}({i}){ext}"
+            while os.path.exists(new_filepath):
+                i += 1
+                new_filepath = f"{base}({i}){ext}"
+            return new_filepath
+        else: # キャンセル
+            return None # 処理を中止することを示す
+
     def run_excel_export(self):
         image_folder = self.image_folder_var.get()
-        excel_output_path = self.excel_output_path_var.get()
+        original_excel_output_path = self.excel_output_path_var.get()
         regions_and_coords = self.config.get("image_regions_and_excel_coords", [])
 
         if not os.path.isdir(image_folder):
@@ -172,15 +211,24 @@ class ImageToOfficeApp:
             messagebox.showwarning("警告", "設定ファイルに画像領域とセル座標のペアが定義されていません。")
             return
 
+        # ファイルの上書き確認とパスの決定
+        excel_output_path = self._handle_file_overwrite(original_excel_output_path)
+        if excel_output_path is None: # ユーザーがキャンセルした場合
+            messagebox.showinfo("処理中止", "Excelファイルの出力がキャンセルされました。")
+            return
+
         try:
             insert_images_to_excel(excel_output_path, image_folder, regions_and_coords)
             messagebox.showinfo("成功", f"Excelファイルが正常に生成されました:\n{excel_output_path}")
+            # もしファイル名が変更された場合、UIのパスも更新する
+            if excel_output_path != original_excel_output_path:
+                self.excel_output_path_var.set(excel_output_path)
         except Exception as e:
             messagebox.showerror("エラー", f"Excelファイルの生成中にエラーが発生しました:\n{e}")
 
     def run_pptx_export(self):
         image_folder = self.image_folder_var.get()
-        pptx_output_path = self.pptx_output_path_var.get()
+        original_pptx_output_path = self.pptx_output_path_var.get()
         regions_and_coords = self.config.get("image_regions_and_excel_coords", [])
         excel_conv_params = self.config.get("excel_to_pptx_conversion_params", {})
 
@@ -194,9 +242,18 @@ class ImageToOfficeApp:
             messagebox.showwarning("警告", "設定ファイルにExcel-PowerPoint変換パラメータが定義されていません。")
             return
 
+        # ファイルの上書き確認とパスの決定
+        pptx_output_path = self._handle_file_overwrite(original_pptx_output_path)
+        if pptx_output_path is None: # ユーザーがキャンセルした場合
+            messagebox.showinfo("処理中止", "PowerPointファイルの出力がキャンセルされました。")
+            return
+
         try:
             insert_images_to_pptx(pptx_output_path, image_folder, regions_and_coords, excel_conv_params)
             messagebox.showinfo("成功", f"PowerPointファイルが正常に生成されました:\n{pptx_output_path}")
+            # もしファイル名が変更された場合、UIのパスも更新する
+            if pptx_output_path != original_pptx_output_path:
+                self.pptx_output_path_var.set(pptx_output_path)
         except Exception as e:
             messagebox.showerror("エラー", f"PowerPointファイルの生成中にエラーが発生しました:\n{e}")
 
