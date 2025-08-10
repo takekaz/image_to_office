@@ -1,4 +1,5 @@
 
+
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk # ttk追加
 from PIL import Image, ImageTk
@@ -576,7 +577,7 @@ class RegionEditor:
                 if abs(x2_img - x1_img) > 1 and abs(y2_img - y1_img) > 1:
                     new_region = {
                         "img_region": [int(min(x1_img, x2_img)), int(min(y1_img, y2_img)),
-                                       int(max(x1_img, x2_img)), int(max(y1_img, y2_yy_img))],
+                                       int(max(x1_img, x2_img)), int(max(y1_img, y2_img))], # ここを修正
                         "excel_pos": "A1" # デフォルト値を設定、後で変更可能にする
                     }
                     self.regions_data.append(new_region)
@@ -684,3 +685,4 @@ if __name__ == '__main__':
 
     app = RegionEditor(root, dummy_config_path, dummy_image_folder, dummy_callback)
     root.mainloop()
+
