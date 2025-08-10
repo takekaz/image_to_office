@@ -1,0 +1,28 @@
+
+
+{
+    "image_regions_and_excel_coords": [
+        {
+            "img_region": [45, 95, 200, 150],
+            "excel_pos": "B2"
+        },
+        {
+            "img_region": [95, 195, 300, 250],
+            "excel_pos": "B8"
+        },
+        {
+            "img_region": [145, 295, 400, 350],
+            "excel_pos": "B14"
+        },
+        {
+            "img_region": [495, 395, 700, 450],
+            "excel_pos": "B20"
+        }
+    ],
+    "excel_to_pptx_conversion_params": {
+        "col_width_pix": 64,
+        "row_height_pix": 20,
+        "dpi": 96
+    }
+}
+

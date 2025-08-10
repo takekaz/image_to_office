@@ -1,0 +1,4 @@
+Pillow
+openpyxl
+python-pptx
+tk
