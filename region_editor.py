@@ -35,7 +35,8 @@ class RegionEditor:
 
         self.setup_ui()
         # display_imageはsetup_uiの後に呼び出し、キャンバスサイズを取得できるようにする
-        self.master.update_idletasks() # キャンバスが実際に配置されるのを待つ
+        # キャンバスが実際に配置されるのを待つ & サイズ確定
+        self.canvas.update_idletasks()
         self.display_image()
 
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -575,7 +576,9 @@ class RegionEditor:
                 json.dump(self.current_config, f, indent=4, ensure_ascii=False)
             messagebox.showinfo("保存", "設定ファイルに保存しました。")
         except Exception as e:
-            messagebox.showerror("保存エラー", f"設定ファイルの保存中にエラーが発生しました:\n{e}")
+            error_message = f"設定ファイルの保存中にエラーが発生しました:\n{e}"
+            print(error_message) # コンソールにも出力
+            messagebox.showerror("保存エラー", error_message)
 
 if __name__ == '__main__':
     # 動作確認用のダミー設定と画像フォルダ
