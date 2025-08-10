@@ -29,6 +29,9 @@ class RegionEditor:
         # 最初の画像のみを使用
         self.current_pil_img, self.current_image_filename = self.images[0]
 
+        # 画像のサイズに合わせて既存の領域をクリッピング
+        self._clip_regions_to_image_bounds() # 新規追加
+
         # オフセットの初期化
         self.offset_x = 0
         self.offset_y = 0
@@ -79,6 +82,41 @@ class RegionEditor:
             except Exception as e:
                 print(f"画像 '{filename}' の読み込み中にエラーが発生しました: {e}")
         return images
+
+    def _clip_regions_to_image_bounds(self):
+        """
+        現在の画像のサイズに合わせて、regions_data内の領域座標をクリッピングする。
+        画像からはみ出す領域を画像の境界内に収める。
+        """
+        img_width, img_height = self.current_pil_img.size
+        
+        updated_regions = []
+        for item in self.regions_data:
+            x1, y1, x2, y2 = item["img_region"]
+
+            # 画像の境界内にクリッピング
+            x1 = max(0, min(x1, img_width))
+            y1 = max(0, min(y1, img_height))
+            x2 = max(0, min(x2, img_width))
+            y2 = max(0, min(y2, img_height))
+
+            # 幅や高さが負にならないように min/max を適用して正規化
+            clipped_region = [min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)]
+            
+            # 最小サイズを保証 (例: 1x1ピクセル未満は無効な領域とみなすか、削除するか)
+            # ここでは単に有効な範囲に収めることに重点を置く
+            if clipped_region[2] - clipped_region[0] < 1: # 幅が1ピクセル未満
+                clipped_region[2] = clipped_region[0] + 1
+            if clipped_region[3] - clipped_region[1] < 1: # 高さが1ピクセル未満
+                clipped_region[3] = clipped_region[1] + 1
+
+            updated_item = item.copy()
+            updated_item["img_region"] = clipped_region
+            updated_regions.append(updated_item)
+        
+        self.regions_data = updated_regions
+        # original_regionsも更新しておかないと、閉じるときに常に変更ありとみなされる
+        self.original_regions = copy.deepcopy(updated_regions) # deepcopyで完全に独立させる
 
     def _set_initial_window_size(self):
         # 画像の元のサイズ
