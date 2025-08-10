@@ -1,5 +1,4 @@
 
-
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk # ttk追加
 from PIL import Image, ImageTk
@@ -16,9 +15,9 @@ class RegionEditor:
 
         self.current_config = self.load_config()
         # original_regionsをdeepcopyで完全に独立させる
-        self.original_regions = copy.deepcopy(self.current_config.get("image_regions_and_excel_coords", [])) # 修正
+        self.original_regions = copy.deepcopy(self.current_config.get("image_regions_and_excel_coords", []))
         # regions_dataもdeepcopyで完全に独立させる
-        self.regions_data = copy.deepcopy(self.current_config.get("image_regions_and_excel_coords", [])) # 修正
+        self.regions_data = copy.deepcopy(self.current_config.get("image_regions_and_excel_coords", []))
 
         # 複数画像のサポートを削除し、最初の画像のみを扱う
         self.images = self.load_images()
@@ -35,7 +34,7 @@ class RegionEditor:
         # オフセットの初期化
         self.offset_x = 0
         self.offset_y = 0
-        
+
         # ウィンドウの初期サイズを設定
         self._set_initial_window_size()
 
@@ -90,32 +89,56 @@ class RegionEditor:
         """
         img_width, img_height = self.current_pil_img.size
         
+        # ハンドルのサイズや操作性を考慮したマージン
+        # ハンドルサイズを8pxとしているので、その半分+α程度のマージン
+        clip_margin = 10 
+
         updated_regions = []
         for item in self.regions_data:
             x1, y1, x2, y2 = item["img_region"]
 
-            # 画像の境界内にクリッピング
-            x1 = max(0, min(x1, img_width))
-            y1 = max(0, min(y1, img_height))
-            x2 = max(0, min(x2, img_width))
-            y2 = max(0, min(y2, img_height))
+            # 画像の境界内にクリッピングし、かつクリップマージンを考慮
+            x1 = max(clip_margin, min(x1, img_width - clip_margin))
+            y1 = max(clip_margin, min(y1, img_height - clip_margin))
+            x2 = max(clip_margin, min(x2, img_width - clip_margin))
+            y2 = max(clip_margin, min(y2, img_height - clip_margin))
 
-            # 幅や高さが負にならないように min/max を適用して正規化
+            # 幅や高さが負にならないように正規化
             clipped_region = [min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)]
             
-            # 最小サイズを保証 (例: 1x1ピクセル未満は無効な領域とみなすか、削除するか)
-            # ここでは単に有効な範囲に収めることに重点を置く
-            if clipped_region[2] - clipped_region[0] < 1: # 幅が1ピクセル未満
-                clipped_region[2] = clipped_region[0] + 1
-            if clipped_region[3] - clipped_region[1] < 1: # 高さが1ピクセル未満
-                clipped_region[3] = clipped_region[1] + 1
+            # 最小サイズを保証 (クリップマージンより小さくならないように)
+            min_dim = 2 * clip_margin + 1 # 最小幅/高さはマージン2つ分+1px
+            
+            # 領域が小さくなりすぎないように調整
+            if clipped_region[2] - clipped_region[0] < min_dim:
+                # x2 を調整
+                if clipped_region[0] + min_dim <= img_width - clip_margin:
+                    clipped_region[2] = clipped_region[0] + min_dim
+                # x1 を調整
+                elif clipped_region[2] - min_dim >= clip_margin:
+                    clipped_region[0] = clipped_region[2] - min_dim
+                # 両方調整する必要がある場合 (領域が非常に小さく、かつ端にある場合)
+                else:
+                    clipped_region[0] = clip_margin
+                    clipped_region[2] = clip_margin + min_dim
+
+            if clipped_region[3] - clipped_region[1] < min_dim:
+                # y2 を調整
+                if clipped_region[1] + min_dim <= img_height - clip_margin:
+                    clipped_region[3] = clipped_region[1] + min_dim
+                # y1 を調整
+                elif clipped_region[3] - min_dim >= clip_margin:
+                    clipped_region[1] = clipped_region[3] - min_dim
+                # 両方調整する必要がある場合
+                else:
+                    clipped_region[1] = clip_margin
+                    clipped_region[3] = clip_margin + min_dim
 
             updated_item = item.copy()
             updated_item["img_region"] = clipped_region
             updated_regions.append(updated_item)
         
         self.regions_data = updated_regions
-        # original_regionsも更新しておかないと、閉じるときに常に変更ありとみなされる
         self.original_regions = copy.deepcopy(updated_regions) # deepcopyで完全に独立させる
 
     def _set_initial_window_size(self):
@@ -499,7 +522,7 @@ class RegionEditor:
             else:
                 self.hide_tooltip() # 20ピクセル未満ではツールチップを非表示
                 return # 20ピクセル未満では何もしない
-        
+
         elif self.drag_mode == "new_region":
             # 仮の矩形を更新
             self.canvas.coords(self.new_region_rect_id, self.drag_start_x, self.drag_start_y, current_canvas_x, current_canvas_y)
@@ -553,7 +576,7 @@ class RegionEditor:
                 if abs(x2_img - x1_img) > 1 and abs(y2_img - y1_img) > 1:
                     new_region = {
                         "img_region": [int(min(x1_img, x2_img)), int(min(y1_img, y2_img)),
-                                       int(max(x1_img, x2_img)), int(max(y1_img, y2_img))],
+                                       int(max(x1_img, x2_img)), int(max(y1_img, y2_yy_img))],
                         "excel_pos": "A1" # デフォルト値を設定、後で変更可能にする
                     }
                     self.regions_data.append(new_region)
@@ -661,5 +684,3 @@ if __name__ == '__main__':
 
     app = RegionEditor(root, dummy_config_path, dummy_image_folder, dummy_callback)
     root.mainloop()
-
-
