@@ -5,6 +5,7 @@ from tkinter import messagebox, simpledialog, ttk # ttk追加
 from PIL import Image, ImageTk
 import os
 import json
+import copy # copyモジュールをインポート
 
 class RegionEditor:
     def __init__(self, master, config_path, image_folder_path, main_app_callback):
@@ -14,8 +15,10 @@ class RegionEditor:
         self.main_app_callback = main_app_callback # main.pyに設定更新を通知するコールバック
 
         self.current_config = self.load_config()
-        self.original_regions = list(self.current_config.get("image_regions_and_excel_coords", [])) # 変更前の状態を保存
-        self.regions_data = [item.copy() for item in self.original_regions] # 編集用データ
+        # original_regionsをdeepcopyで完全に独立させる
+        self.original_regions = copy.deepcopy(self.current_config.get("image_regions_and_excel_coords", [])) # 修正
+        # regions_dataもdeepcopyで完全に独立させる
+        self.regions_data = copy.deepcopy(self.current_config.get("image_regions_and_excel_coords", [])) # 修正
 
         # 複数画像のサポートを削除し、最初の画像のみを扱う
         self.images = self.load_images()
@@ -563,6 +566,11 @@ class RegionEditor:
             # 画面には直接影響しないが、内部データが更新されたことを確認
 
     def on_closing(self):
+        print("--- on_closing called ---")
+        print(f"regions_data (current): {self.regions_data}")
+        print(f"original_regions (initial): {self.original_regions}")
+        print(f"Are they different? {self.regions_data != self.original_regions}")
+
         if self.regions_data != self.original_regions: # 変更があるか確認
             if messagebox.askyesno("確認", "変更を保存して閉じますか？"):
                 self.save_config()
