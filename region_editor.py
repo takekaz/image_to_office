@@ -88,19 +88,38 @@ class RegionEditor:
         screen_width = self.master.winfo_screenwidth()
         screen_height = self.master.winfo_screenheight()
 
-        # スクロールバーやウィンドウの枠などのための余白 (適宜調整)
-        horizontal_extra = 50
-        vertical_extra = 50
+        # スクロールバーやウィンドウの枠、タイトルバーなどのための余白 (調整)
+        # 経験的に、スクロールバーの幅や高さは約15-20px
+        # ウィンドウのタイトルバーやボーダーも考慮に入れる
+        # 最低限、スクロールバーが表示されるための余白を確保
+        scrollbar_thickness = 20 # 仮定 (実際のOSやテーマで変動)
+        padding_extra = 30 # その他のウィンドウボーダーやマージン
 
-        # 希望するウィンドウサイズ (画像サイズ + 余白)
-        desired_width = img_width + horizontal_extra
-        desired_height = img_height + vertical_extra
+        # 希望するウィンドウサイズ (画像サイズ + スクロールバーのスペース + 余白)
+        desired_width = img_width + scrollbar_thickness + padding_extra
+        desired_height = img_height + scrollbar_thickness + padding_extra
 
         # ウィンドウサイズは画面の最大サイズを超えないようにする
         final_width = min(desired_width, screen_width)
         final_height = min(desired_height, screen_height)
 
-        self.master.geometry(f"{final_width}x{final_height}")
+        # 最小サイズを設定することで、スクロールバーが表示されるべき時に隠れないようにする
+        # ただし、画像が画面より小さい場合は小さくても良い
+        # 画像サイズが画面サイズより大きい場合にのみ、画面最大化を考慮
+        if img_width > screen_width - (scrollbar_thickness + padding_extra) or \
+           img_height > screen_height - (scrollbar_thickness + padding_extra):
+            # 画像のいずれかの寸法が画面より大きい場合、ウィンドウを最大化する
+            # 'zoomed'はWindowsで最大化、macOSでは通常全画面、Linuxでは環境依存
+            self.master.state('zoomed')
+        else:
+            self.master.geometry(f"{final_width}x{final_height}")
+
+        # ウィンドウの最小サイズを設定 (スクロールバーが隠れないように)
+        # 例えば、画像が小さくても、スクロールバーの領域は確保したい場合
+        # self.master.minsize(img_width + scrollbar_thickness + padding_extra, img_height + scrollbar_thickness + padding_extra)
+        # ここでは、画像が画面より小さい場合はそのままのサイズで表示し、不要なスクロールバーを出さないため、
+        # minsizeは設定しないか、より柔軟に。
+        # 現在のロジックでは、desired_width/heightが最低限確保される。
 
 
     def setup_ui(self):
