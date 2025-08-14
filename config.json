@@ -23,6 +23,7 @@
         "col_width_pix": 64,
         "row_height_pix": 20,
         "dpi": 96
-    }
+    },
+    "pptx_template_file": "temp.pptx"
 }
 

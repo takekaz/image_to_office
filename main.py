@@ -271,7 +271,9 @@ class ImageToOfficeApp:
             return
 
         try:
-            insert_images_to_pptx(pptx_output_path, image_folder, regions_and_coords, excel_conv_params)
+            template_file = self.config.get("pptx_template_file", None)
+            template_pptx_path = os.path.join(self.app_exe_dir, template_file) if template_file else None
+            insert_images_to_pptx(pptx_output_path, image_folder, regions_and_coords, excel_conv_params, template_pptx_path)
             messagebox.showinfo("成功", f"PowerPointファイルが正常に生成されました:\n{pptx_output_path}")
             if pptx_output_path != original_pptx_output_path:
                 self.pptx_output_path_var.set(pptx_output_path)
